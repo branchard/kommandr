@@ -14,7 +14,6 @@ class Kommandr {
 			throw "You must define a command name";
 		}
 		this.commandName = name;
-		//this.matchRegex = new RegExp("^play(.*)$", "g");
 		this.matchRegex = new RegExp(
 			`^${option.prefix ? option.prefix : "" }(?:${name}${option.aliases ? `|${option.aliases.join("|")}` : ""})(.*)$`
 		);
@@ -57,7 +56,6 @@ class Kommandr {
 	argument(arg){
 		// "<cmd>" = required arg
 		// "[cmd]" = optional arg
-		// cannot add required arg after optional arg
 
 		let regexResult = argumentRegex.exec(arg);
 		if(!regexResult){
@@ -82,21 +80,15 @@ class Kommandr {
 
 		let regexResult = this.matchRegex.exec(toParse);
 		if(regexResult){
-			//console.log("regex match", regexResult);
-
-			// if regex match set result
+			// if regex match set result array
 			this.result = [];
 			let args = regexResult[1].trim().replace(/ +(?= )/g,'').split(" ");// remove multiple spaces and explode in array
 			if(args){
-				console.log("There are args:", args);
-				// let nextArg = args.shift();
 
 				// replace -tar by "-t", "-a", "-r"
 				let newArgs = [];
 				args.forEach((arg, index, arr) => {
-					//console.log("-", arg);
 					if(arg.includes("-") && !arg.includes("--") && arg.length > 2){
-						//arr.splice(index, 1, ...arg.slice(1).split("").map((x) => `-${x}`));
 						newArgs.push(...arg.slice(1).split("").map((x) => `-${x}`))
 					}else{
 						newArgs.push(arg);
@@ -111,16 +103,12 @@ class Kommandr {
 					if(args[index].includes("-")){
 						let findedOption = this.findOption(args[index]);
 						if(!findedOption){
-							// TODO sortie d'erreur au lieu d'exception
-							//throw `Option invalide: ${args[index]}`
 							return this.handleParseError(`Option invalide: ${args[index]}`);
 						}
 
 						let toPush;
 						if(findedOption.argumentRequired){
 							if(args.length <= index + 1){
-								// TODO sortie d'erreur au lieu d'exception
-								//throw `L'option: ${args[index]} requiert un argument`;
 								return this.handleParseError(`L'option: ${args[index]} requiert un argument`);
 							}
 							toPush = args.splice(index + 1, 1)[0];
@@ -151,9 +139,9 @@ class Kommandr {
 				let notRequiredArguments = this.arguments.filter((argument) => !argument.isRequired);
 
 				if(requiredArguments.length > args.length){
-					//throw "Il manque des arguments";
 					return this.handleParseError("Il manque des arguments");
 				}
+
 				// parse requiredArguments first
 				for(let currentArguments of [requiredArguments, notRequiredArguments]){
 					index = 0;
@@ -167,10 +155,8 @@ class Kommandr {
 					});
 				}
 
-				console.log("after parse", args);
 				// if there is still args
 				if(args.length !== 0){
-					//throw `Il y a trop d'arguments: ${JSON.stringify(args)}`;
 					return this.handleParseError(`Il y a trop d'arguments: ${JSON.stringify(args)}`);
 				}
 			}
@@ -203,6 +189,7 @@ class Kommandr {
 		if(typeof callback !== "function"){
 			throw "You must pass callback";
 		}
+		
 		switch(level) {
 			case "info":
 				this.eventListeners.info.push(callback);
