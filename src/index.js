@@ -14,6 +14,7 @@ class Kommandr {
 			throw "You must define a command name";
 		}
 		this.commandName = name;
+		this.aliases = option.aliases || [];
 		this.matchRegex = new RegExp(
 			`^${option.prefix ? option.prefix : "" }(?:${name}${option.aliases ? `|${option.aliases.join("|")}` : ""})(.*)$`
 		);
@@ -21,7 +22,7 @@ class Kommandr {
 		this.result = undefined;
 
 		this.arguments = [];//[{argumentName, isRequired<bool>}]
-		this.options = [];//[{singleCharacter, multiCharacter, argumentRequired<bool>}]
+		this.options = [];//[{singleCharacter, multiCharacter, argumentRequired<bool>, description}]
 
 		this.eventListeners = {
 			info: [],
@@ -46,7 +47,8 @@ class Kommandr {
 		this.options.push({
 			singleCharacter: regexResult[1],
 			multiCharacter: regexResult[2],
-			argumentRequired: regexResult[3] !== undefined
+			argumentRequired: regexResult[3] !== undefined,
+			description: description || ""
 		});
 
 		return this;
@@ -80,6 +82,11 @@ class Kommandr {
 
 		let regexResult = this.matchRegex.exec(toParse);
 		if(regexResult){
+			if(regexResult[1].includes("-h") || regexResult[1].includes("--help")){
+				this.info(this.help());
+				return this.result;
+			}
+
 			// if regex match set result array
 			this.result = [];
 			let args = regexResult[1].trim().replace(/ +(?= )/g,'').split(" ");// remove multiple spaces and explode in array
@@ -165,6 +172,59 @@ class Kommandr {
 		return this.result;
 	}
 
+	// iterate on this.arguments in right order (requiredArguments before notRequiredArguments)
+	forEachArguments(callback){
+		// get required arguments
+		let requiredArguments = this.arguments.filter((argument) => argument.isRequired);
+
+		// get not required arguments
+		let notRequiredArguments = this.arguments.filter((argument) => !argument.isRequired);
+
+		for(let currentArguments of [requiredArguments, notRequiredArguments]){
+			for(let argument of currentArguments){
+				callback(argument);
+			}
+		}
+	}
+
+	help(){
+		let helpBuilder = [];
+
+		let argumentsStringBegin = "";
+		let argumentsStringEnd = "";
+		for(let argument of this.arguments){
+			if(argument.isRequired){
+				argumentsStringBegin = `${argumentsStringBegin} <${argument.argumentName}>`;
+			}else{
+				argumentsStringEnd = `${argumentsStringEnd} [${argument.argumentName}]`;
+			}
+		}
+		helpBuilder.push(`Usage: ${this.commandName}${this.options.length > 0 ? " [options]" : ""}${argumentsStringBegin}${argumentsStringEnd}`);
+
+		if(this.aliases.length > 0){
+			helpBuilder.push(`Aliases: ${this.aliases.join(", ")}`);
+		}
+
+		helpBuilder.push("");
+		helpBuilder.push("Options:");
+
+		let optionStrings = [];
+		let longestOptionLength = 0;
+
+		this.options.forEach((option) => {
+			let optionString = `  ${option.singleCharacter ? option.singleCharacter : ""}${option.singleCharacter && option.multiCharacter ? ", " : ""}${option.multiCharacter ? option.multiCharacter : ""}${option.argumentRequired ? " [argument]" : ""}  `;
+			longestOptionLength = longestOptionLength < optionString.length ? optionString.length : longestOptionLength;
+			optionStrings.push(optionString);
+		});
+
+		optionStrings.forEach((optionString, index) => {
+			helpBuilder.push(`${optionString.padEnd(longestOptionLength, " ")}${this.options[index].description}`);
+		});
+
+
+		return helpBuilder.join("\n");
+	}
+
 	handleParseError(errorText){
 		this.result = undefined;
 		this.error(errorText);
@@ -189,7 +249,7 @@ class Kommandr {
 		if(typeof callback !== "function"){
 			throw "You must pass callback";
 		}
-		
+
 		switch(level) {
 			case "info":
 				this.eventListeners.info.push(callback);
