@@ -191,21 +191,23 @@ class Kommandr {
 			helpBuilder.push(`Aliases: ${this.aliases.join(", ")}`);
 		}
 
-		helpBuilder.push("");
-		helpBuilder.push("Options:");
+		if(this.options.length > 0){
+			helpBuilder.push("");
+			helpBuilder.push("Options:");
 
-		let optionStrings = [];
-		let longestOptionLength = 0;
+			let optionStrings = [];
+			let longestOptionLength = 0;
 
-		this.options.forEach((option) => {
-			let optionString = `  ${option.singleCharacter ? option.singleCharacter : ""}${option.singleCharacter && option.multiCharacter ? ", " : ""}${option.multiCharacter ? option.multiCharacter : ""}${option.argumentRequired ? " [argument]" : ""}  `;
-			longestOptionLength = longestOptionLength < optionString.length ? optionString.length : longestOptionLength;
-			optionStrings.push(optionString);
-		});
+			this.options.forEach((option) => {
+				let optionString = `  ${option.singleCharacter ? option.singleCharacter : ""}${option.singleCharacter && option.multiCharacter ? ", " : ""}${option.multiCharacter ? option.multiCharacter : ""}${option.argumentRequired ? " [argument]" : ""}  `;
+				longestOptionLength = longestOptionLength < optionString.length ? optionString.length : longestOptionLength;
+				optionStrings.push(optionString);
+			});
 
-		optionStrings.forEach((optionString, index) => {
-			helpBuilder.push(`${optionString.padEnd(longestOptionLength, " ")}${this.options[index].description}`);
-		});
+			optionStrings.forEach((optionString, index) => {
+				helpBuilder.push(`${optionString.padEnd(longestOptionLength, " ")}${this.options[index].description}`);
+			});
+		}
 
 
 		return helpBuilder.join("\n");
