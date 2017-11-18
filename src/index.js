@@ -89,102 +89,88 @@ class Kommandr {
 
 			// if regex match set result array
 			this.result = [];
-			let args = regexResult[1].trim().replace(/ +(?= )/g,'').split(" ");// remove multiple spaces and explode in array
-			if(args){
+			let args = [];
+			if(regexResult[1]){
+				args = regexResult[1].trim().replace(/ +(?= )/g,'').split(" ");// remove multiple spaces and explode in array
+			}
 
-				// replace -tar by "-t", "-a", "-r"
-				let newArgs = [];
-				args.forEach((arg, index, arr) => {
-					if(arg.includes("-") && !arg.includes("--") && arg.length > 2){
-						newArgs.push(...arg.slice(1).split("").map((x) => `-${x}`))
-					}else{
-						newArgs.push(arg);
+			// replace -tar by "-t", "-a", "-r"
+			let newArgs = [];
+			args.forEach((arg, index, arr) => {
+				if(arg.includes("-") && !arg.includes("--") && arg.length > 2){
+					newArgs.push(...arg.slice(1).split("").map((x) => `-${x}`))
+				}else{
+					newArgs.push(arg);
+				}
+			});
+			args = newArgs;
+
+			// parse singlechar and multiplechar options
+			let index = 0;
+			while(index < args.length){
+				// if there is singlechar options
+				if(args[index].includes("-")){
+					let findedOption = this.findOption(args[index]);
+					if(!findedOption){
+						return this.handleParseError(`Option invalide: ${args[index]}`);
 					}
+
+					let toPush;
+					if(findedOption.argumentRequired){
+						if(args.length <= index + 1){
+							return this.handleParseError(`L'option: ${args[index]} requiert un argument`);
+						}
+						toPush = args.splice(index + 1, 1)[0];
+					}else{
+						toPush = true;
+					}
+
+					if(findedOption.singleCharacter){
+						this.result[findedOption.singleCharacter.slice(1)] = toPush;
+					}
+					if(findedOption.multiCharacter){
+						this.result[findedOption.multiCharacter.slice(2)] = toPush;
+					}
+
+					args.splice(index, 1);
+
+				}else{
+					index++;
+				}
+			}
+
+			// parse arguments
+
+			// get required arguments
+			let requiredArguments = this.arguments.filter((argument) => argument.isRequired);
+
+			// get not required arguments
+			let notRequiredArguments = this.arguments.filter((argument) => !argument.isRequired);
+
+			if(requiredArguments.length > args.length){
+				return this.handleParseError("Il manque des arguments");
+			}
+
+			// parse requiredArguments first
+			for(let currentArguments of [requiredArguments, notRequiredArguments]){
+				index = 0;
+				while(index < currentArguments.length){
+					this.result[currentArguments[index]]
+					index++;
+				}
+
+				currentArguments.forEach((argument) => {
+					this.result[argument.argumentName] = args.shift();
 				});
-				args = newArgs;
+			}
 
-				// parse singlechar and multiplechar options
-				let index = 0;
-				while(index < args.length){
-					// if there is singlechar options
-					if(args[index].includes("-")){
-						let findedOption = this.findOption(args[index]);
-						if(!findedOption){
-							return this.handleParseError(`Option invalide: ${args[index]}`);
-						}
-
-						let toPush;
-						if(findedOption.argumentRequired){
-							if(args.length <= index + 1){
-								return this.handleParseError(`L'option: ${args[index]} requiert un argument`);
-							}
-							toPush = args.splice(index + 1, 1)[0];
-						}else{
-							toPush = true;
-						}
-
-						if(findedOption.singleCharacter){
-							this.result[findedOption.singleCharacter.slice(1)] = toPush;
-						}
-						if(findedOption.multiCharacter){
-							this.result[findedOption.multiCharacter.slice(2)] = toPush;
-						}
-
-						args.splice(index, 1);
-
-					}else{
-						index++;
-					}
-				}
-
-				// parse arguments
-
-				// get required arguments
-				let requiredArguments = this.arguments.filter((argument) => argument.isRequired);
-
-				// get not required arguments
-				let notRequiredArguments = this.arguments.filter((argument) => !argument.isRequired);
-
-				if(requiredArguments.length > args.length){
-					return this.handleParseError("Il manque des arguments");
-				}
-
-				// parse requiredArguments first
-				for(let currentArguments of [requiredArguments, notRequiredArguments]){
-					index = 0;
-					while(index < currentArguments.length){
-						this.result[currentArguments[index]]
-						index++;
-					}
-
-					currentArguments.forEach((argument) => {
-						this.result[argument.argumentName] = args.shift();
-					});
-				}
-
-				// if there is still args
-				if(args.length !== 0){
-					return this.handleParseError(`Il y a trop d'arguments: ${JSON.stringify(args)}`);
-				}
+			// if there is still args
+			if(args.length !== 0){
+				return this.handleParseError(`Il y a trop d'arguments: ${JSON.stringify(args)}`);
 			}
 		}
 
 		return this.result;
-	}
-
-	// iterate on this.arguments in right order (requiredArguments before notRequiredArguments)
-	forEachArguments(callback){
-		// get required arguments
-		let requiredArguments = this.arguments.filter((argument) => argument.isRequired);
-
-		// get not required arguments
-		let notRequiredArguments = this.arguments.filter((argument) => !argument.isRequired);
-
-		for(let currentArguments of [requiredArguments, notRequiredArguments]){
-			for(let argument of currentArguments){
-				callback(argument);
-			}
-		}
 	}
 
 	help(){
@@ -227,7 +213,7 @@ class Kommandr {
 
 	handleParseError(errorText){
 		this.result = undefined;
-		this.error(errorText);
+		this.error(`${errorText}\n${this.help()}`);
 		return this.result;
 	}
 
