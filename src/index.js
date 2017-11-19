@@ -1,7 +1,7 @@
 // inspired by commander.js
 
-const optionRegex =  new RegExp("^(?:(-[a-z])?\\s?(--[a-z]{2,})?\\s?(\\[\\])?)$");
-const argumentRegex = new RegExp("^(?:<([a-z]+)>)|(?:\\[([a-z]+)\\])$");
+const optionRegex =  new RegExp("^(?:(-[a-zA-Z])?\\s?(--[a-zA-Z]{2,})?\\s?(\\[\\])?)$");
+const argumentRegex = new RegExp("^(?:<([a-zA-Z]+)>)|(?:\\[([a-z]+)\\])$");
 
 class Kommandr {
 	constructor(name, option = {}){
